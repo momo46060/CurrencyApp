@@ -2,6 +2,8 @@ package presentation.component
 
 import CurrencyCode
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,10 +29,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -108,7 +115,7 @@ fun RatesStatus(
                 Text(
                     status.title,
                     fontSize = MaterialTheme.typography.titleLarge.fontSize,
-                )
+                    color = if (status == RateStatus.State)Color(0xffFFA500) else Color.Green,)
             }
         }
 
@@ -172,6 +179,11 @@ fun CurrencyInputs(
     target: RequestState<Currency>,
     onSwitchClick: () -> Unit
 ) {
+    var animatedStarted by remember {mutableStateOf(false)}
+    val animatedRotation by animateFloatAsState(
+        targetValue = if (animatedStarted) 180f else 0f,
+        animationSpec = tween(durationMillis = 500)
+    )
     Row (
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -181,12 +193,21 @@ fun CurrencyInputs(
             currency = source,
             onClick = {}
         )
-        Icon(
-            imageVector = Icons.Default.Refresh,
-            contentDescription = null,
-            tint = Color(0xffFFA500),
-            modifier = Modifier.clickable { onSwitchClick() }
-        )
+        IconButton(
+            modifier = Modifier.padding(top = 24.dp)
+                .graphicsLayer {  rotationY = animatedRotation },
+            onClick = {
+                animatedStarted = !animatedStarted
+                onSwitchClick()
+            }
+        ){
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = null,
+                tint = Color(0xffFFA500),
+            )
+        }
+
         Spacer(modifier = Modifier.height(14.dp))
         CurrencyView(
             placeHolder = "target",
@@ -208,7 +229,7 @@ fun AmountInput(
             .height(54.dp),
         value = "$amount",
         onValueChange = {t->
-            onAmountChange(t.toDouble())
+            onAmountChange(t.toDoubleOrNull()?:0.0)
         },
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.White.copy(alpha = 0.05f),

@@ -1,9 +1,11 @@
 package di
 
 import com.russhwolf.settings.Settings
+import data.local.MongoImpl
 import data.local.PreferencesRepositoryImpl
 import data.remote.api.CurrencyApiServiceImpl
 import domain.CurrencyApiService
+import domain.MongoRepository
 import domain.PreferencesRepository
 import org.koin.compose.viewmodel.dsl.viewModelOf
 import org.koin.core.KoinApplication
@@ -27,17 +29,18 @@ val appmodule = module {
 
     singleOf(::CurrencyApiServiceImpl)
         .bind<CurrencyApiService>()
-   factory {
-       HomeViewModel(get(),get())
-   }
+    singleOf(::MongoImpl).bind<MongoRepository>()
 
-
+    factory {
+        HomeViewModel(get(), get(), get())
+    }
 
 
 }
-fun initialKoin(config:KoinAppDeclaration? = null) {
+
+fun initialKoin(config: KoinAppDeclaration? = null) {
     startKoin {
         config?.invoke(this)
-        modules(appmodule,platormModule)
+        modules(appmodule, platormModule)
     }
 }

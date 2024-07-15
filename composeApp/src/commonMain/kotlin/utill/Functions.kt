@@ -8,7 +8,7 @@ fun disaplayCurrentDateTime(): String {
     val currentTImeStamp = Clock.System.now()
     val date = currentTImeStamp.toLocalDateTime(TimeZone.currentSystemDefault())
     val dayMonth = date.dayOfMonth
-    val month = date.dayOfMonth.toString().lowercase()
+    val month = date.month.toString().lowercase()
         .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
     val year = date.year
 

@@ -6,29 +6,38 @@ import androidx.compose.runtime.mutableStateOf
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import domain.CurrencyApiService
+import domain.MongoRepository
 import domain.PreferencesRepository
 import domain.model.Currency
 import domain.model.RateStatus
 import domain.model.RequestState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import presentation.component.RatesStatus
 
 sealed class HomeUiEvent {
     data object Refresh : HomeUiEvent()
+    data object SwitchCurrencies : HomeUiEvent()
 }
 
 class HomeViewModel(
     private val repository: PreferencesRepository,
-    private val apiService: CurrencyApiService
+    private val apiService: CurrencyApiService,
+    private val mongoDB: MongoRepository
 ) : ScreenModel {
 
     init {
         screenModelScope.launch(Dispatchers.IO) {
             fetchNewRates()
             getRateStatus()
+            readSourceCurrency()
+            readTargetCurrency()
         }
     }
 
@@ -40,34 +49,95 @@ class HomeViewModel(
 
                 }
             }
+            is HomeUiEvent.SwitchCurrencies -> {
+                screenModelScope.launch(Dispatchers.IO) {
+                   switchCurrencies()
+                }
+            }
         }
     }
 
-    private var _rateState: MutableState<RateStatus> =
-        mutableStateOf(RateStatus.Idle)
-    val rateState: State<RateStatus> = _rateState
+    private fun switchCurrencies() {
+        val source = _sourceCurrency.value
+        val target = _targetCurrency.value
+        _sourceCurrency.value = target
+        _targetCurrency.value = source
+    }
 
-    private var _sourceCurrency: MutableState<RequestState<Currency>> =
-        mutableStateOf(RequestState.Idle)
+    private var _rateState: MutableStateFlow<RateStatus> =
+        MutableStateFlow(RateStatus.Idle)
+    val rateState: StateFlow<RateStatus> = _rateState
 
-    val sourceCurrency: State<RequestState<Currency>> = _sourceCurrency
+    private var _sourceCurrency: MutableStateFlow<RequestState<Currency>> =
+        MutableStateFlow(RequestState.Idle)
 
-  val _targetCurrency: MutableState<RequestState<Currency>> =
-        mutableStateOf(RequestState.Idle)
+    val sourceCurrency: StateFlow<RequestState<Currency>> = _sourceCurrency
 
-    val targetCurrency: State<RequestState<Currency>> = _targetCurrency
+    var _targetCurrency: MutableStateFlow<RequestState<Currency>> =
+        MutableStateFlow(RequestState.Idle)
 
+    val targetCurrency: StateFlow<RequestState<Currency>> = _targetCurrency
 
+    private val _currencyList: MutableStateFlow<MutableList<Currency>> =
+        MutableStateFlow(mutableListOf())
 
+    val currencyList: StateFlow<List<Currency>> = _currencyList
 
+    private fun readSourceCurrency() {
+        screenModelScope.launch(Dispatchers.IO) {
+            repository.readTargetCurrency().collectLatest {currencyCode->
+                val selectedCurrency = _currencyList.value.find { it.code == currencyCode.name }
+                if (selectedCurrency != null) {
+                    _targetCurrency.value = RequestState.Success(selectedCurrency)
+                } else {
+                    _targetCurrency.value = RequestState.Error("Currency not found")
+                }
 
+            }
+        }
+    }
 
+    private fun readTargetCurrency() {
+        screenModelScope.launch(Dispatchers.IO) {
+            repository.readSourceCurrency().collectLatest {currencyCode->
+                val selectedCurrency = _currencyList.value.find { it.code == currencyCode.name }
+                if (selectedCurrency != null) {
+                    _sourceCurrency.value = RequestState.Success(selectedCurrency)
+                } else {
+                    _sourceCurrency.value = RequestState.Error("Currency not found")
+                }
 
-
-
+            }
+        }
+    }
 
     private suspend fun fetchNewRates() {
         try {
+            val localCache = mongoDB.readCurrency().first()
+            if (localCache.isSuccess()) {
+                if (localCache.getSuccessData().isNotEmpty()) {
+                    println("Local Cache is not empty")
+                    _currencyList.value.addAll(localCache.getSuccessData())
+                    if (!repository.isDataFresh(
+                        Clock.System.now().toEpochMilliseconds()
+                    )){
+                        println("HomeViewModel: Data is not fresh")
+                        cacheTheData()
+
+                    }else{
+                        println("HomeViewModel: Data is fresh")
+                        _currencyList.value.addAll(localCache.getSuccessData())
+                    }
+                } else {
+                    println("Local Cache is empty")
+                    cacheTheData()
+
+                }
+
+            } else if (localCache.isError()){
+                println("HomeViewModel: local cache error ${localCache.getErrorMessage()}")
+
+            }
             apiService.getLastestExchangeRates()
             getRateStatus()
 
@@ -76,11 +146,26 @@ class HomeViewModel(
         }
     }
 
-    private suspend fun getRateStatus() {
+    suspend fun cacheTheData() {
+        val fetchedDate= apiService.getLastestExchangeRates()
+        if (fetchedDate.isSuccess()){
+            mongoDB.clearCurrency()
+            fetchedDate.getSuccessData().forEach {
+                println("HomeViewModel: ${it.code}")
+                mongoDB.insertCurrency(it)
+            }
+            println("HomeViewModel: Updated _allCurrency")
+            _currencyList.value.addAll(fetchedDate.getSuccessData())
+        }else if (fetchedDate.isError()){
+            println("HomeViewModel: fetching error ${fetchedDate.getErrorMessage()}")
+        }
+    }
 
+    private suspend fun getRateStatus() {
         _rateState.value = if (repository.isDataFresh(
                 currentTimestamp = Clock.System.now().toEpochMilliseconds()
             )
-        ) RateStatus.Fresh else RateStatus.State
+        ) RateStatus.Fresh
+        else RateStatus.State
     }
 }

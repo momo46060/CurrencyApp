@@ -7,6 +7,6 @@ import presentation.screen.HomeViewModel
 actual val platormModule= module {
 
     factory {
-        HomeViewModel(get(), get())
+        HomeViewModel(get(), get(), get())
     }
 }
