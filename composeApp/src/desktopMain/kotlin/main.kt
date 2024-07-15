@@ -1,11 +1,15 @@
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import di.initialKoin
 
-fun main() = application {
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "CurrencyApp",
-    ) {
-        App()
+fun main()  {
+    initialKoin()
+    application {
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = "CurrencyApp",
+        ) {
+            App()
+        }
     }
 }

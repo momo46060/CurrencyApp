@@ -1,3 +1,6 @@
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 
 val primaryLight = Color(0xFF0D6B58)
@@ -217,7 +220,13 @@ val surfaceContainerHighDarkHighContrast = Color(0xFF252B29)
 val surfaceContainerHighestDarkHighContrast = Color(0xFF303634)
 
 
+val surfaceColor: Color
+    @Composable
+    get() = if (isSystemInDarkTheme()) surfaceDark else surfaceLight
 
+val headerColor: Color
+    @Composable
+    get() = if (isSystemInDarkTheme()) Color(0xFF0c589c) else surfaceLight
 
 
 
