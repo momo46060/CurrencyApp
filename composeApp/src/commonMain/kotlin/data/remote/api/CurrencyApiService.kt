@@ -1,6 +1,8 @@
 package data.remote.api
 
+import CurrencyCode
 import domain.CurrencyApiService
+import domain.PreferencesRepository
 import domain.model.ApiResponse
 import domain.model.Currency
 import domain.model.RequestState
@@ -16,7 +18,9 @@ import io.ktor.client.request.headers
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
-class CurrencyApiServiceImpl : CurrencyApiService {
+class CurrencyApiServiceImpl(
+    private val preferance: PreferencesRepository
+) : CurrencyApiService {
     companion object{
         const val END_POINT = "https://api.currencyapi.com/v3/latest"
         const val API_KEY = "cur_live_PMDiLn338OyjahR15yBFMyTG41cu75RmbOsQo5Tg"
@@ -49,7 +53,20 @@ class CurrencyApiServiceImpl : CurrencyApiService {
             if (response.status.value in 200..299){
                 println(response.body<String>())
                     val apiResponse = Json.decodeFromString<ApiResponse>(response.body())
-                RequestState.Success(data = apiResponse.data.values.toList())
+                    val avalibleCurrenciesCodes = apiResponse.data.keys
+                        .filter {
+                            CurrencyCode.entries
+                                .map {code -> code.name}
+                                .toSet()
+                                .contains(it)
+                        }
+                val avalibleCurrencies = apiResponse.data.values
+                    .filter { currency ->
+                        avalibleCurrenciesCodes.contains(currency.code)
+                    }
+                    val lastUpdate = apiResponse.meta.lastUpdatedAt
+                    preferance.saveLastUpdated(lastUpdate)
+                RequestState.Success(data = avalibleCurrencies)
             }else{
                 println(response.status.value)
                 RequestState.Error(message = "Error ${response.status.value}")
