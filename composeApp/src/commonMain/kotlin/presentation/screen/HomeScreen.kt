@@ -12,6 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
+import domain.model.CurrencyType
+import presentation.component.CurrencyPickerDialog
 import presentation.component.HomeHeader
 import surfaceColor
 
@@ -21,9 +23,31 @@ class HomeScreen : Screen {
     override fun Content() {
        val viewModel = getScreenModel<HomeViewModel>()
         val rateStatus by viewModel.rateState.collectAsState()
+        val allCurrencies by viewModel.currencyList.collectAsState()
+        println("allCurrencies ${allCurrencies.size}")
         val source by viewModel.sourceCurrency.collectAsState()
         val target by viewModel.targetCurrency.collectAsState()
         var amount by remember { mutableStateOf(0) }
+
+//        var selectedCurrencyType: CurrencyType by remember {
+
+
+        var dialogOpened by remember {mutableStateOf(true)}
+
+       val selectedCurrencyType by remember{
+           mutableStateOf(CurrencyType.None)
+       }
+        if (dialogOpened){
+            CurrencyPickerDialog(
+                currencies = allCurrencies,
+                currencyType = selectedCurrencyType,
+                onDismiss = { dialogOpened = false },
+                onPositiveClick = {dialogOpened = false}
+
+            )
+
+        }
+
         Column(
             modifier = Modifier.fillMaxSize()
                 .background(surfaceColor),
