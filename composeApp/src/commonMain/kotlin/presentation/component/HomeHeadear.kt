@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import currencyapp.composeapp.generated.resources.Res
 import currencyapp.composeapp.generated.resources.compose_multiplatform
 import domain.model.Currency
+import domain.model.DisplayResult
 import domain.model.RateStatus
 import domain.model.RequestState
 import headerColor
@@ -156,18 +157,17 @@ fun RowScope.CurrencyView(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            if (currency.isSuccess()){
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = CurrencyCode.valueOf(currency.getSuccessData().code).name,
-                    color = Color.White,
-                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                    fontWeight = FontWeight.Bold)
+            currency.DisplayResult(
+                onSuccess = {data->
 
-            }else if (currency.isLoading()){
-                Spacer(modifier = Modifier.width(8.dp))
-                CircularProgressIndicator(modifier=Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = CurrencyCode.valueOf(data.code).name,
+                        color = Color.White,
+                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                        fontWeight = FontWeight.Bold)
+                }
+            )
 
-            }
         }
     }
 }
