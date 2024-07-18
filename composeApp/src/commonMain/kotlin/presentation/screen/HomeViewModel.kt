@@ -24,6 +24,8 @@ import presentation.component.RatesStatus
 sealed class HomeUiEvent {
     data object Refresh : HomeUiEvent()
     data object SwitchCurrencies : HomeUiEvent()
+    data class SaveSourceCurrency(val code: String) : HomeUiEvent()
+    data class SaveTargetCurrency(val code: String) : HomeUiEvent()
 }
 
 class HomeViewModel(
@@ -54,8 +56,30 @@ class HomeViewModel(
                    switchCurrencies()
                 }
             }
+
+            is HomeUiEvent.SaveSourceCurrency -> {
+                saveSourceCurrencyCode(event.code)
+            }
+          is  HomeUiEvent.SaveTargetCurrency -> {
+                saveTargetCurrencyCode(event.code)
+            }
         }
     }
+
+    private fun saveSourceCurrencyCode(code:String){
+        screenModelScope.launch(Dispatchers.IO) {
+            repository.saveSourceCurrency(code)
+        }
+
+    }
+   private fun saveTargetCurrencyCode(code:String){
+        screenModelScope.launch(Dispatchers.IO) {
+            repository.saveTargetCurrency(code)
+        }
+
+    }
+
+
 
     private fun switchCurrencies() {
         val source = _sourceCurrency.value

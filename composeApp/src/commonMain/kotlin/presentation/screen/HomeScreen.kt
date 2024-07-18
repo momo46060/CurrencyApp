@@ -32,17 +32,31 @@ class HomeScreen : Screen {
 //        var selectedCurrencyType: CurrencyType by remember {
 
 
-        var dialogOpened by remember {mutableStateOf(true)}
+        var dialogOpened by remember {mutableStateOf(false)}
 
-       val selectedCurrencyType by remember{
-           mutableStateOf(CurrencyType.None)
+       var selectedCurrencyType : CurrencyType by remember{
+           mutableStateOf(CurrencyType.None(CurrencyCode.EGP))
        }
-        if (dialogOpened){
+        if (dialogOpened && selectedCurrencyType != CurrencyType.None(CurrencyCode.EGP)){
             CurrencyPickerDialog(
                 currencies = allCurrencies,
                 currencyType = selectedCurrencyType,
-                onDismiss = { dialogOpened = false },
-                onPositiveClick = {dialogOpened = false}
+                onDismiss = {
+                    selectedCurrencyType = CurrencyType.None(CurrencyCode.EGP)
+                    dialogOpened = false
+                            },
+                onPositiveClick = {currencyType->
+                    if (selectedCurrencyType is CurrencyType.Source){
+                        viewModel.sendEvent(
+                            HomeUiEvent.SaveSourceCurrency(currencyType.name)
+                        )
+                    }else{
+                        viewModel.sendEvent(
+                            HomeUiEvent.SaveTargetCurrency(currencyType.name)
+                        )                    }
+                    selectedCurrencyType = CurrencyType.None(CurrencyCode.EGP)
+                    dialogOpened = false
+                }
 
             )
 
@@ -71,7 +85,13 @@ class HomeScreen : Screen {
                         HomeUiEvent.SwitchCurrencies,
                     )
 
-                })
+                },
+                onCurrencyTypeSelected = {currencyType->
+
+                    selectedCurrencyType = currencyType
+                    dialogOpened = true
+                }
+            )
 
         }
     }
